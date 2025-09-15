@@ -1,0 +1,31 @@
+{
+  "name": "chatbot-autopecas",
+  "version": "1.0.0",
+  "description": "Chatbot especializado em autopeças com IA",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.5",
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0",
+    "moment": "^2.30.1",
+    "mongoose": "^8.5.1",
+    "openai": "^4.52.7",
+    "pino": "^9.2.0",
+    "puppeteer": "^24.20.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4"
+  }
+}
