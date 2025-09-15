@@ -4,10 +4,10 @@ const connectDatabase = async () => {
     try {
         const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/chatbot-autopecas';
         
-        await mongoose.connect(mongoUri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        console.log('🔗 Tentando conectar ao MongoDB...');
+        console.log('🔗 URI (censurada):', mongoUri.replace(/:[^:@]*@/, ':***@'));
+        
+        await mongoose.connect(mongoUri);
         
         console.log('✅ MongoDB conectado com sucesso');
         
@@ -27,8 +27,10 @@ const connectDatabase = async () => {
             process.exit(0);
         });
         
+        return mongoose.connection;
+        
     } catch (error) {
-        console.error('❌ Erro ao conectar ao MongoDB:', error);
+        console.error('❌ Erro ao conectar ao MongoDB:', error.message);
         
         // Se não conseguir conectar, usar dados em memória
         console.log('⚠️ Usando dados em memória (sem persistência)');
