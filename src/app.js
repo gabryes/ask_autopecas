@@ -1,3 +1,4 @@
+// src/app.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -7,7 +8,7 @@ const path = require('path');
 const { connectDatabase } = require('./config/database');
 const WhatsAppService = require('./services/whatsappService');
 const AIService = require('./services/aiService');
-const CatalogService = require('./services/catalogService');
+const CatalogService = require('./services/catalogService'); // Importa o novo CatalogService
 const MessageController = require('./controllers/messageController');
 
 class ChatbotApp {
@@ -21,7 +22,7 @@ class ChatbotApp {
         this.catalogService = null;
         this.messageController = null;
         
-        console.log('🚀 Iniciando serviços...');
+        console.log('�� Iniciando serviços...');
     }
 
     async initialize() {
@@ -30,8 +31,12 @@ class ChatbotApp {
             this.setupExpress();
             
             // Inicializar serviços
-            await this.initializeServices();
+            await this.initializeServices(); // Esta linha chama initializeServices
             
+            // REMOVA QUALQUER LINHA QUE CHAME this.catalogService.loadCatalog() AQUI
+            // Por exemplo, se você tinha algo como:
+            // await this.catalogService.loadCatalog(); // <--- REMOVA ESTA LINHA SE EXISTIR
+
             // Configurar rotas
             this.setupRoutes();
             
@@ -46,16 +51,6 @@ class ChatbotApp {
         }
     }
 
-    setupExpress() {
-        // Middlewares
-        this.app.use(cors());
-        this.app.use(express.json());
-        this.app.use(express.urlencoded({ extended: true }));
-        
-        // Servir arquivos estáticos
-        this.app.use(express.static(path.join(__dirname, '../public')));
-    }
-
     async initializeServices() {
         try {
             // 1. Conectar ao banco de dados
@@ -65,8 +60,10 @@ class ChatbotApp {
             this.aiService = new AIService();
             
             // 3. Inicializar Catalog Service
-            this.catalogService = new CatalogService();
-            
+            this.catalogService = new CatalogService(); // Instancia o novo CatalogService
+            // REMOVA QUALQUER LINHA QUE CHAME this.catalogService.loadCatalog() AQUI TAMBÉM
+            // O novo CatalogService não precisa ser "carregado", ele busca do DB sob demanda.
+
             // 4. Inicializar Message Controller
             this.messageController = new MessageController(this.aiService, this.catalogService);
             console.log('✅ MessageController inicializado');
@@ -91,6 +88,16 @@ class ChatbotApp {
             console.error('❌ Erro ao inicializar serviços:', error);
             throw error;
         }
+    }
+
+    setupExpress() {
+        // Middlewares
+        this.app.use(cors());
+        this.app.use(express.json());
+        this.app.use(express.urlencoded({ extended: true }));
+        
+        // Servir arquivos estáticos
+        this.app.use(express.static(path.join(__dirname, '../public')));
     }
 
     setupRoutes() {
@@ -119,10 +126,11 @@ class ChatbotApp {
                         number_discovered: this.whatsappService?.isNumberDiscovered() || false
                     },
                     catalog: {
-                        total_products: this.catalogService?.getProductCount() || 0
+                        // Agora o CatalogService vai buscar a contagem no DB
+                        total_products: await this.catalogService?.getProductCount() || 0 
                     },
                     ai: {
-                        mode: 'simulation'
+                        mode: 'simulation' // Ou 'real' se você ativar a OpenAI
                     },
                     timestamp: new Date().toISOString()
                 };
@@ -201,7 +209,7 @@ class ChatbotApp {
                 </head>
                 <body>
                     <div class="container">
-                        <h1>🤖 Teste do Chatbot AutoPeças</h1>
+                        <h1>🤖 Ask Autopeças</h1>
                         
                         <div id="status" class="status">
                             <strong>Status:</strong> Verificando conexão...
@@ -276,7 +284,7 @@ class ChatbotApp {
                                 const data = await response.json();
                                 
                                 if (data.success) {
-                                    responseDiv.innerHTML = '<div class="response">✅ <strong>Mensagem enviada com sucesso!</strong><br><br>📤 <strong>Enviado:</strong> ' + data.test_message + '<br>📞 <strong>Para o bot:</strong> ' + data.bot_number + '<br><br>🔍 <strong>Verifique o terminal</strong> para ver a resposta do chatbot!</div>';
+                                    responseDiv.innerHTML = '<div class="response">✅ <strong>Mensagem enviada com sucesso!</strong><br><br>📤 <strong>Enviado:</strong> ' + data.test_message + '<br>📞 <strong>Para o bot:</strong> ' + data.bot_number + '<br><br>�� <strong>Verifique o terminal</strong> para ver a resposta do chatbot!</div>';
                                 } else {
                                     responseDiv.innerHTML = '<div class="response error">❌ <strong>Erro:</strong> ' + data.message + '</div>';
                                 }
@@ -291,6 +299,21 @@ class ChatbotApp {
                 </body>
                 </html>
             `);
+        });
+
+                // Adicionar no setupRoutes()
+        this.app.get('/api/debug-products', async (req, res) => {
+            try {
+                await this.catalogService.debugProductStructure();
+                const products = await this.catalogService.getAllProducts();
+                res.json({
+                    total_products: products.length,
+                    sample_product: products[0] || null,
+                    available_fields: products[0] ? Object.keys(products[0].toObject()) : []
+                });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
         });
 
         // Rota padrão
@@ -312,7 +335,7 @@ class ChatbotApp {
         this.app.listen(this.port, () => {
             console.log(`🚀 Servidor rodando na porta ${this.port}`);
             console.log(`🔍 Health Check: http://localhost:${this.port}/health`);
-            console.log(`📊 Stats: http://localhost:${this.port}/api/stats`);
+            console.log(`�� Stats: http://localhost:${this.port}/api/stats`);
             console.log(`🧪 Teste: http://localhost:${this.port}/test-chat`);
         });
     }

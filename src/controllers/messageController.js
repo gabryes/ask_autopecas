@@ -23,7 +23,8 @@ class MessageController {
             
             // Verificar se é pedido de catálogo
             if (this.isCatalogRequest(userMessage)) {
-                const products = this.catalogService.getAllProducts();
+                // const products = this.catalogService.getAllProducts();
+                const products = await this.catalogService.getAllProducts();
                 await whatsappService.sendCatalog(chatId, products);
                 return;
             }
@@ -36,7 +37,8 @@ class MessageController {
             }
             
             // Buscar produtos no catálogo
-            const products = this.catalogService.searchProducts(userMessage);
+            // const products = this.catalogService.searchProducts(userMessage);
+            const products = await this.catalogService.searchProducts(userMessage);
             
             if (products.length > 0) {
                 console.log(`🔍 Encontrados ${products.length} produtos`);

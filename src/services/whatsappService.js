@@ -12,16 +12,38 @@ class WhatsAppService {
     }
 
     async initialize() {
+        console.log('🔄 Tentando inicializar WhatsApp Web...');
+
+        // --- Lógica de limpeza para evitar conflitos de sessão ---
+        if (this.client) { // Se já existe uma instância do client
+            console.log('🧹 Detectada uma instância anterior do WhatsApp Client nesta execução. Tentando encerrá-la...');
+            try {
+                // Tenta destruir a instância anterior para garantir que o navegador seja fechado
+                await this.client.destroy();
+                console.log('✅ Instância anterior encerrada com sucesso.');
+            } catch (err) {
+                console.warn('⚠️ Erro ao tentar encerrar instância anterior, pode ser que já estivesse fechada ou com problemas:', err.message);
+            } finally {
+                this.client = null; // Reseta o client para garantir uma nova inicialização limpa
+                this.isConnected = false; // Reseta o status de conexão
+            }
+        }
+        // --- Fim da lógica de limpeza ---
+
         try {
             console.log('🔄 Conectando ao WhatsApp Web...');
 
             this.client = new Client({
                 authStrategy: new LocalAuth({
                     name: 'chatbot-autopecas-v3',
+                    // Importante: Este dataPath armazena a sessão do WhatsApp.
+                    // Se você tiver erros persistentes de "Failed to launch the browser process!"
+                    // ou "Session already active", pode ser necessário apagar manualmente a pasta
+                    // `./wwebjs_auth_v3` para forçar uma nova sessão e um novo QR Code.
                     dataPath: './wwebjs_auth_v3'
                 }),
                 puppeteer: {
-                    headless: true,
+                    headless: true, // Mantenha como 'true' para execução em servidor
                     args: [
                         '--no-sandbox',
                         '--disable-setuid-sandbox',
@@ -35,7 +57,7 @@ class WhatsAppService {
                     ]
                 },
                 webVersionCache: {
-                    type: 'none'
+                    type: 'none' // Evita problemas de compatibilidade com versões do WhatsApp Web
                 }
             });
 
@@ -43,7 +65,7 @@ class WhatsAppService {
             this.client.on('qr', (qr) => {
                 console.log('\n📱 ESCANEIE O QR CODE COM SEU WHATSAPP:\n');
                 qrcode.generate(qr, { small: true });
-                console.log('\n📋 Abra o WhatsApp no seu celular > Menu > Dispositivos conectados > Conectar dispositivo\n');       
+                console.log('\n📋 Abra o WhatsApp no seu celular > Menu > Dispositivos conectados > Conectar dispositivo\n');
                 console.log('⏰ QR Code expira em 20 segundos. Se não conseguir, reinicie o servidor.\n');
             });
 
@@ -91,7 +113,7 @@ class WhatsAppService {
                         this.numberDiscovered = true;
                     }
 
-                    // Filtros
+                    // Filtros para ignorar mensagens de grupos, suas próprias mensagens ou status
                     if (message.from.includes('@g.us') || message.fromMe || message.from === 'status@broadcast') {
                         return;
                     }
@@ -116,15 +138,18 @@ class WhatsAppService {
             });
 
             // Erro de autenticação
-            this.client.on('auth_failure', () => {
-                console.error('❌ Falha na autenticação WhatsApp');
-                console.log('💡 Tente remover a pasta wwebjs_auth_v3 e reiniciar');
+            this.client.on('auth_failure', (msg) => {
+                console.error('❌ Falha na autenticação WhatsApp:', msg);
+                console.log('💡 Tente remover a pasta `wwebjs_auth_v3` e reiniciar para forçar um novo QR Code.');
+                this.isConnected = false;
             });
 
             // Desconexão
             this.client.on('disconnected', (reason) => {
                 console.log('📴 WhatsApp desconectado:', reason);
                 this.isConnected = false;
+                // Opcional: tentar re-inicializar aqui, dependendo da sua estratégia de resiliência
+                // if (reason === 'DISCONNECTED') { setTimeout(() => this.initialize(), 5000); }
             });
 
             await this.client.initialize();
@@ -132,6 +157,17 @@ class WhatsAppService {
 
         } catch (error) {
             console.error('❌ Erro ao inicializar WhatsApp:', error);
+            
+            // Tenta destruir o cliente se a inicialização falhou, para garantir que o navegador seja fechado
+            if (this.client) {
+                try {
+                    await this.client.destroy();
+                    console.log('🧹 Cliente WhatsApp destruído após erro na inicialização.');
+                } catch (destroyErr) {
+                    console.error('❌ Erro ao tentar destruir cliente após falha na inicialização:', destroyErr.message);
+                }
+            }
+
             console.log('🌐 WhatsApp real falhou, usando simulação');
             this.setupSimulationMode();
             return this;
@@ -141,8 +177,7 @@ class WhatsAppService {
     async forceNumberDiscovery() {
         try {
             console.log('🔍 Tentando descobrir número conectado...');
-
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Pequeno atraso para garantir que a info esteja pronta
 
             if (this.client.info?.wid?.user) {
                 const number = this.client.info.wid.user;
@@ -154,6 +189,7 @@ class WhatsAppService {
             }
 
             try {
+                // Segunda tentativa via contatos, pode ser mais lenta
                 const contacts = await this.client.getContacts();
                 const myContact = contacts.find(contact => contact.isMe);
                 if (myContact) {
@@ -164,10 +200,10 @@ class WhatsAppService {
                     return;
                 }
             } catch (e) {
-                console.log('⚠️ Não foi possível buscar contatos');
+                console.log('⚠️ Não foi possível buscar contatos para descobrir o número.');
             }
 
-            console.log('💡 Número será descoberto quando chegar a primeira mensagem');
+            console.log('💡 Número será descoberto quando chegar a primeira mensagem (ou configure uma inicial automática).');
 
         } catch (error) {
             console.log('⚠️ Erro ao descobrir número:', error.message);
@@ -177,7 +213,7 @@ class WhatsAppService {
     setupSimulationMode() {
         console.log('🤖 Configurando modo simulação...');
         this.isConnected = true;
-        this.connectedNumber = '5511999999999';
+        this.connectedNumber = '5511999999999'; // Número de simulação
         this.numberDiscovered = true;
 
         this.showTestInstructions();
@@ -242,14 +278,17 @@ class WhatsAppService {
         products.slice(0, 5).forEach((product, index) => {
             message += `${index + 1}️⃣ *${product.name}*\n`;
             message += `📦 Código: ${product.code}\n`;
-            message += `🚗 Compatível: ${product.compatibility.join(', ')}\n`;
-            message += `💰 Preço: R$ ${product.price.toFixed(2)}\n`;
-            message += `📊 Estoque: ${product.stock} unidades\n`;
-            message += `⭐ Avaliação: ${product.rating}/5\n\n`;
+            // Adicionado um pequeno tratamento para compatibilidade, caso seja um array vazio
+            message += `🚗 Compatível: ${product.compatibility && product.compatibility.length > 0 ? product.compatibility.join(', ') : 'N/A'}\n`;
+            message += `💰 Preço: R$ ${product.price ? product.price.toFixed(2) : 'N/A'}\n`;
+            message += `📊 Estoque: ${product.stock !== undefined ? product.stock + ' unidades' : 'N/A'}\n`;
+            // Adicione um campo de avaliação se você tiver um (exemplo)
+            // message += `⭐ Avaliação: ${product.rating || 'N/A'}/5\n\n`;
+            message += `\n`; // Adiciona uma linha em branco para separar os produtos
         });
 
         if (products.length > 5) {
-            message += `➕ *E mais ${products.length - 5} produtos disponíveis!*\n\n`;
+            message += `➕ *E mais ${products.length - 5} produtos disponíveis!* Digite mais detalhes para refinar a busca.\n\n`;
         }
 
         message += "📞 *Entre em contato para mais informações!*";
@@ -296,6 +335,23 @@ class WhatsAppService {
 
     isNumberDiscovered() {
         return this.numberDiscovered;
+    }
+
+    // --- NOVO MÉTODO: Destroi o cliente WhatsApp Web ---
+    async destroy() {
+        if (this.client) {
+            console.log('🧹 Encerrando WhatsApp Web client...');
+            try {
+                await this.client.destroy();
+                this.client = null;
+                this.isConnected = false;
+                console.log('✅ WhatsApp Web client encerrado com sucesso.');
+            } catch (error) {
+                console.error('❌ Erro ao encerrar WhatsApp Web client:', error);
+                // Em caso de erro ao destruir, o client pode já estar em um estado inválido,
+                // mas tentamos garantir que o processo do navegador não esteja mais ativo.
+            }
+        }
     }
 }
 
