@@ -4,29 +4,34 @@ const productSchema = new mongoose.Schema({
     id: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        trim: true // Adicionado para remover espaços em branco no início/fim
     },
     code: {
         type: String,
         required: true,
         unique: true,
-        index: true
+        index: true,
+        trim: true // Adicionado
     },
     name: {
         type: String,
         required: true,
-        text: true // Para busca de texto
+        text: true, // Para busca de texto
+        trim: true // Adicionado
     },
     brand: {
         type: String,
         required: true,
-        index: true
+        index: true,
+        trim: true // Adicionado
     },
     category: {
         type: String,
         required: true,
         enum: ['freios', 'filtros', 'motor', 'suspensao', 'eletrica', 'carroceria', 'transmissao'],
-        index: true
+        index: true,
+        trim: true // Adicionado
     },
     price: {
         type: Number,
@@ -41,18 +46,27 @@ const productSchema = new mongoose.Schema({
     },
     compatibility: [{
         type: String,
-        required: true
+        required: true,
+        trim: true // Adicionado
     }],
     description: {
         type: String,
-        required: true
+        required: true,
+        trim: true // Adicionado
     },
-    image: String,
-    oem_codes: [String],
+    image: {
+        type: String,
+        trim: true // Adicionado
+    },
+    oem_codes: [{ // Array de strings, trim em cada elemento ao salvar
+        type: String,
+        trim: true
+    }],
     installation_difficulty: {
         type: String,
         enum: ['fácil', 'médio', 'difícil'],
-        default: 'médio'
+        default: 'médio',
+        trim: true // Adicionado
     },
     warranty_months: {
         type: Number,
@@ -65,8 +79,14 @@ const productSchema = new mongoose.Schema({
         height: Number
     },
     supplier: {
-        name: String,
-        code: String,
+        name: {
+            type: String,
+            trim: true // Adicionado
+        },
+        code: {
+            type: String,
+            trim: true // Adicionado
+        },
         lead_time_days: Number
     },
     created_at: {
@@ -88,7 +108,7 @@ productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ category: 1, brand: 1 });
 productSchema.index({ price: 1, stock: 1 });
 
-// Middleware
+// Middleware para atualizar 'updated_at'
 productSchema.pre('save', function(next) {
     this.updated_at = new Date();
     next();
@@ -100,13 +120,14 @@ productSchema.statics.searchByText = function(query) {
         $text: { $search: query },
         is_active: true,
         stock: { $gt: 0 }
-    }).sort({ score: { $meta: 'textScore' } });
+    }).sort({ score: { $meta: 'textScore' } }); // Ordena por relevância do texto
 };
 
 productSchema.statics.findByCompatibility = function(vehicle) {
+    // Regex mais robusta para compatibilidade (busca por marca e modelo, ignorando case)
     const searchPattern = new RegExp(`${vehicle.marca}.*${vehicle.modelo}`, 'i');
     return this.find({
-        compatibility: { $regex: searchPattern },
+        compatibility: { $regex: searchPattern }, // Busca por regex nos campos de compatibilidade
         is_active: true,
         stock: { $gt: 0 }
     });

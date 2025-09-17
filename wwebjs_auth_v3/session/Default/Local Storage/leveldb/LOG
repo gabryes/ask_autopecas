@@ -1,3 +1,6 @@
-2025/09/15-16:13:20.138 58fc Reusing MANIFEST C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/MANIFEST-000001
-2025/09/15-16:13:20.196 58fc Recovering log #4
-2025/09/15-16:13:20.196 58fc Reusing old log C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/000004.log 
+2025/09/17-08:20:57.715 55fc Reusing MANIFEST C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/MANIFEST-000001
+2025/09/17-08:20:57.730 55fc Recovering log #5
+2025/09/17-08:20:57.731 55fc Reusing old log C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/000005.log 
+2025/09/17-08:37:58.882 2764 Level-0 table #8: started
+2025/09/17-08:37:58.905 2764 Level-0 table #8: 15141 bytes OK
+2025/09/17-08:37:58.910 2764 Delete type=0 #5
