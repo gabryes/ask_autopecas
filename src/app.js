@@ -7,7 +7,9 @@ const path = require('path');
 // Importar serviços
 const { connectDatabase } = require('./config/database');
 const WhatsAppService = require('./services/whatsappService');
+const adminRoutes = require('./routes/admin');
 const AIService = require('./services/aiService');
+const ServiceManager = require('./services/serviceManager');
 const CatalogService = require('./services/catalogService'); // Importa o novo CatalogService
 const MessageController = require('./controllers/messageController');
 
@@ -21,6 +23,7 @@ class ChatbotApp {
         this.aiService = null;
         this.catalogService = null;
         this.messageController = null;
+        this.serviceManager = null;
         
         console.log('�� Iniciando serviços...');
     }
@@ -114,6 +117,14 @@ class ChatbotApp {
             });
         });
 
+        // Rotas administrativas
+        this.app.use('/api/admin', adminRoutes);
+
+        // Rota para o painel admin
+        this.app.get('/admin', (req, res) => {
+            res.sendFile(path.join(__dirname, '../public/admin.html'));
+        });
+
         // Stats
         this.app.get('/api/stats', async (req, res) => {
             try {
@@ -179,6 +190,64 @@ class ChatbotApp {
             }
         });
 
+
+        // Rota para o painel de controle
+        this.app.get('/control', (req, res) => {
+            res.sendFile(path.join(__dirname, '../public/control-panel.html'));
+        });
+
+        // API para controle de serviços
+        this.app.post('/api/control/start', async (req, res) => {
+            try {
+                if (!this.serviceManager) {
+                    this.serviceManager = new ServiceManager();
+                }
+                
+                const result = await this.serviceManager.startAllServices();
+                res.json({ success: result, message: 'Serviços iniciados' });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.app.post('/api/control/stop', async (req, res) => {
+            try {
+                if (this.serviceManager) {
+                    const result = await this.serviceManager.stopAllServices();
+                    res.json({ success: result, message: 'Serviços parados' });
+                } else {
+                    res.json({ success: true, message: 'Serviços já estavam parados' });
+                }
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.app.get('/api/control/status', async (req, res) => {
+            try {
+                if (this.serviceManager) {
+                    const status = this.serviceManager.getServicesStatus();
+                    res.json(status);
+                } else {
+                    res.json({ services: {}, system: {} });
+                }
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        this.app.get('/api/control/logs', async (req, res) => {
+            try {
+                if (this.serviceManager) {
+                    const logs = this.serviceManager.getLogs();
+                    res.json(logs);
+                } else {
+                    res.json([]);
+                }
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
         // PÁGINA DE TESTE SIMPLES
         this.app.get('/test-chat', (req, res) => {
             res.send(`
