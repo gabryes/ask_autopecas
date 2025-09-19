@@ -1,0 +1,547 @@
+/* Reset e Base */
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+/* Layout Principal */
+.control-panel {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    font-size: 3em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.header p {
+    font-size: 1.2em;
+    opacity: 0.9;
+}
+
+/* Controles Principais */
+.main-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.control-card {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.control-card:hover {
+    transform: translateY(-5px);
+}
+
+.control-card h2 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+/* Botões de Power */
+.power-button {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: none;
+    font-size: 3em;
+    cursor: pointer;
+    margin: 20px auto;
+    display: block;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.power-button.start {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+
+.power-button.stop {
+    background: linear-gradient(135deg, #f44336, #da190b);
+    color: white;
+}
+
+.power-button.loading {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+    animation: pulse 1.5s infinite;
+}
+
+.power-button:hover {
+    transform: scale(1.05);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Grid de Status */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.status-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    border-left: 4px solid #e0e0e0;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
+}
+
+.status-card h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+/* Status dos serviços com indicadores melhorados */
+.status-card .service-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.status-card .status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Status: Rodando (verde piscando suave) */
+.status-card.running {
+    border-left-color: #4CAF50;
+}
+
+.status-card.running .status-indicator {
+    background-color: #4CAF50;
+    animation: pulse-green 2s infinite;
+}
+
+/* Status: Parado (vermelho piscando) */
+.status-card.stopped {
+    border-left-color: #f44336;
+}
+
+.status-card.stopped .status-indicator {
+    background-color: #f44336;
+    animation: pulse-red 1.5s infinite;
+}
+
+/* Status: Conectando (amarelo piscando rápido) */
+.status-card.connecting {
+    border-left-color: #ff9800;
+}
+
+.status-card.connecting .status-indicator {
+    background-color: #ff9800;
+    animation: pulse-orange 1s infinite;
+}
+
+/* Status: Desconhecido (cinza piscando lento) */
+.status-card.unknown {
+    border-left-color: #9e9e9e;
+}
+
+.status-card.unknown .status-indicator {
+    background-color: #9e9e9e;
+    animation: pulse-gray 2.5s infinite;
+}
+
+/* Status: Erro (vermelho fixo) */
+.status-card.error {
+    border-left-color: #d32f2f;
+}
+
+.status-card.error .status-indicator {
+    background-color: #d32f2f;
+}
+
+/* Animações de pulsação */
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
+
+@keyframes pulse-orange {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes pulse-gray {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Indicadores de Status antigos (manter compatibilidade) */
+.status-indicator.running { 
+    background: #4CAF50; 
+    animation: pulse-green 2s infinite;
+}
+
+.status-indicator.stopped { 
+    background: #f44336; 
+    animation: pulse-red 1.5s infinite;
+}
+
+.status-indicator.connecting { 
+    background: #ff9800; 
+    animation: pulse-orange 1s infinite;
+}
+
+.status-indicator.error { 
+    background: #e91e63; 
+}
+
+.status-indicator.unknown {
+    background: #9e9e9e;
+    animation: pulse-gray 2.5s infinite;
+}
+
+/* Seções de Logs */
+.logs-section {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.logs-section h3 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+/* Container de Logs */
+.logs-container {
+    background: #1e1e1e;
+    color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    height: 300px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    border: 2px solid #333;
+}
+
+.log-entry {
+    margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 3px;
+    line-height: 1.4;
+}
+
+.log-entry.info { 
+    border-left: 3px solid #2196F3; 
+    background: rgba(33, 150, 243, 0.1);
+}
+
+.log-entry.success { 
+    border-left: 3px solid #4CAF50; 
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.log-entry.warning { 
+    border-left: 3px solid #ff9800; 
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.log-entry.error { 
+    border-left: 3px solid #f44336; 
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.log-timestamp {
+    color: #888;
+    font-size: 12px;
+    margin-right: 8px;
+}
+
+/* Linha de Controles */
+.controls-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Botões */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn:hover { 
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn.primary { 
+    background: #2196F3; 
+    color: white; 
+}
+
+.btn.success { 
+    background: #4CAF50; 
+    color: white; 
+}
+
+.btn.warning { 
+    background: #ff9800; 
+    color: white; 
+}
+
+.btn.danger { 
+    background: #f44336; 
+    color: white; 
+}
+
+.btn.secondary { 
+    background: #6c757d; 
+    color: white; 
+}
+
+/* Informações do Sistema */
+.system-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.info-item {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #2196F3;
+    transition: transform 0.3s ease;
+}
+
+.info-item:hover {
+    transform: translateY(-2px);
+}
+
+.info-label {
+    font-weight: bold;
+    color: #666;
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 18px;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Modais */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover { 
+    color: #333; 
+}
+
+/* Container QR */
+.qr-container {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    border: 2px dashed #ddd;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .main-controls {
+        grid-template-columns: 1fr;
+    }
+    
+    .header h1 {
+        font-size: 2em;
+    }
+    
+    .power-button {
+        width: 100px;
+        height: 100px;
+        font-size: 2.5em;
+    }
+    
+    .controls-row {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+        padding: 20px;
+    }
+    
+    .system-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .control-panel {
+        padding: 10px;
+    }
+    
+    .header h1 {
+        font-size: 1.8em;
+    }
+    
+    .control-card {
+        padding: 20px;
+    }
+    
+    .logs-container {
+        height: 200px;
+        font-size: 12px;
+    }
+}
+
+/* Scrollbar personalizada para logs */
+.logs-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.logs-container::-webkit-scrollbar-track {
+    background: #333;
+}
+
+.logs-container::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 4px;
+}
+
+.logs-container::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+/* Estados de loading */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Animações extras */
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

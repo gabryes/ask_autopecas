@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoPeças - Teste do Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        .message.bot .message-content {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }
+
+        .message.bot .message-avatar {
+            background: #2196f3;
+            color: white;
+        }
+
+        .message.user .message-avatar {
+            background: #667eea;
+            color: white;
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .message-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .send-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .quick-actions {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .quick-actions h4 {
+            margin-bottom: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .quick-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }
+
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 600px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .back-btn {
+                position: static;
+                transform: none;
+                margin-bottom: 10px;
+            }
+
+            .chat-header {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <a href="/" class="back-btn">← Voltar</a>
+            <h1>🚗 Chatbot AutoPeças</h1>
+            <p>Teste a inteligência artificial do seu assistente virtual</p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    Olá! 👋 Sou o assistente virtual da AutoPeças. Como posso ajudar você hoje?
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar">🤖</div>
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+            <span>Digitando...</span>
+        </div>
+
+        <div class="quick-actions">
+            <h4>💡 Sugestões rápidas:</h4>
+            <div class="quick-buttons">
+                <button class="quick-btn" onclick="sendQuickMessage('Olá')">👋 Cumprimentar</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Preciso de pastilha de freio')">🔧 Pastilha de freio</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Filtro de óleo para Civic 2015')">🛢️ Filtro de óleo</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Catálogo de produtos')">📋 Ver catálogo</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Ajuda')">❓ Ajuda</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Falar com atendente')">👨‍💼 Atendente</button>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <div class="input-container">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    class="message-input" 
+                    placeholder="Digite sua mensagem..."
+                    onkeypress="handleKeyPress(event)"
+                >
+                <button id="sendBtn" class="send-btn" onclick="sendMessage()">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+                <div class="message-content">${content}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTyping() {
+            typingIndicator.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTyping() {
+            typingIndicator.style.display = 'none';
+        }
+
+        async function sendMessage(message = null) {
+            const messageText = message || messageInput.value.trim();
+            if (!messageText) return;
+
+            // Adicionar mensagem do usuário
+            addMessage(messageText, true);
+            
+            // Limpar input
+            messageInput.value = '';
+            
+            // Desabilitar botão de envio
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Enviando...';
+            
+            // Mostrar indicador de digitação
+            showTyping();
+
+            try {
+                // Enviar para a API
+                const response = await fetch('/api/test-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: messageText,
+                        contact: '5511999999999' // Número de teste
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Simular delay de resposta
+                setTimeout(() => {
+                    hideTyping();
+                    
+                    if (data.success) {
+                        // Simular resposta do bot (em uma implementação real, 
+                        // você receberia a resposta via WebSocket ou polling)
+                        simulateBotResponse(messageText);
+                    } else {
+                        addMessage(`❌ Erro: ${data.error}`, false);
+                    }
+                    
+                    // Reabilitar botão
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = 'Enviar';
+                }, 1000 + Math.random() * 2000); // 1-3 segundos
+
+            } catch (error) {
+                hideTyping();
+                addMessage('❌ Erro de conexão. Verifique se o servidor está rodando.', false);
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Enviar';
+            }
+        }
+
+        function simulateBotResponse(userMessage) {
+            const lowerMessage = userMessage.toLowerCase();
+            let botResponse = '';
+
+            if (lowerMessage.includes('olá') || lowerMessage.includes('oi')) {
+                botResponse = '👋 Olá! Como posso ajudar você hoje? Estou aqui para encontrar as peças perfeitas para seu veículo!';
+            } else if (lowerMessage.includes('pastilha')) {
+                botResponse = '🔧 Encontrei algumas pastilhas de freio! Para qual modelo de carro você precisa? Temos opções para Honda, Toyota, Ford e muitas outras marcas.';
+            } else if (lowerMessage.includes('filtro')) {
+                botResponse = '🛢️ Temos vários tipos de filtros: óleo, ar, combustível. Para qual veículo você precisa? Me diga o modelo e ano que eu encontro a peça certa!';
+            } else if (lowerMessage.includes('catálogo')) {
+                botResponse = '📋 Aqui estão algumas categorias principais:\n\n🔧 Freios (pastilhas, discos)\n🛢️ Filtros (óleo, ar, combustível)\n⚡ Sistema elétrico (velas, bobinas)\n🚗 Suspensão (amortecedores, molas)\n\nO que você está procurando?';
+            } else if (lowerMessage.includes('ajuda')) {
+                botResponse = '❓ Posso ajudar você a:\n\n• Encontrar peças por modelo do carro\n• Verificar compatibilidade\n• Consultar preços e estoque\n• Tirar dúvidas técnicas\n\nDigite o nome da peça ou modelo do seu carro!';
+            } else if (lowerMessage.includes('atendente')) {
+                botResponse = '👨‍💼 Entendi! Vou te conectar com um atendente humano. Por favor, aguarde um momento que alguém da nossa equipe entrará em contato.';
+            } else {
+                botResponse = '🤔 Interessante! Deixe-me processar sua solicitação... Para te ajudar melhor, pode me dizer o modelo do seu carro ou que tipo de peça está procurando?';
+            }
+
+            addMessage(botResponse, false);
+        }
+
+        function sendQuickMessage(message) {
+            sendMessage(message);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Focar no input ao carregar a página
+        window.onload = function() {
+            messageInput.focus();
+        };
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 // src/services/aiService.js
-const OpenAI = require('openai'); // Certifique-se de ter o pacote 'openai' instalado: npm install openai
+const OpenAI = require('openai');
 
 class AIService {
     constructor() {
@@ -9,84 +9,174 @@ class AIService {
             this.openai = new OpenAI({ apiKey: apiKey });
             console.log('✅ AI Service inicializado com OpenAI real.');
         } else {
-            this.openai = null; // Garante que a instância da OpenAI não seja criada
+            this.openai = null;
             console.log('🤖 AI Service em modo SIMULAÇÃO (sem OpenAI real). Por favor, defina OPENAI_API_KEY no seu .env');
         }
     }
 
+    /**
+     * Processa a mensagem do usuário usando IA (real ou simulada) para detectar intenção e entidades.
+     * @param {string} message A mensagem do usuário.
+     * @param {object} context Contexto da conversa (opcional).
+     * @returns {Promise<object>} Objeto com { response, intent, entities, confidence }.
+     */
     async processMessage(message, context = {}) {
-        console.log('🧠 Processando mensagem...');
+        console.log('🧠 Processando mensagem com AI Service...');
 
         if (!this.openai) {
-            // Se não houver chave API, fallback para a simulação (para desenvolvimento local sem custo)
+            // Modo de SIMULAÇÃO: Intenção e Entidades baseadas em palavras-chave simples
             console.log('⚠️ Usando IA SIMULADA (API Key não configurada).');
             const messageText = message.toLowerCase();
-            // Simular delay de processamento
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 500)); // Simular delay
 
-            if (messageText.includes('pastilha') || messageText.includes('freio')) {
-                return { response: this.generateCatalogResponse(), intent: 'product_search', confidence: 0.95 };
-            }
-            if (messageText.includes('preço') || messageText.includes('valor') || messageText.includes('quanto')) {
-                return { response: this.generatePriceResponse(), intent: 'price_inquiry', confidence: 0.90 };
-            }
+            let intent = 'general_inquiry';
+            let entities = {};
+            let confidence = 0.3;
+            let response = this.generateDefaultResponse();
+
             if (messageText.includes('oi') || messageText.includes('olá') || messageText.includes('bom dia')) {
-                return { response: this.generateGreetingResponse(), intent: 'greeting', confidence: 0.85 };
+                intent = 'greeting';
+                response = this.generateGreetingResponse();
+                confidence = 0.9;
+            } else if (messageText.includes('catálogo') || messageText.includes('produtos') || messageText.includes('peças')) {
+                intent = 'catalog_request';
+                response = this.generateCatalogResponse();
+                confidence = 0.85;
+            } else if (messageText.includes('ajuda') || messageText.includes('socorro') || messageText.includes('opções')) {
+                intent = 'help_request';
+                response = this.generateHelpResponse();
+                confidence = 0.8;
+            } else if (messageText.includes('pastilha') || messageText.includes('freio') || messageText.includes('filtro') || messageText.includes('amortecedor') || messageText.includes('vela')) {
+                intent = 'search_part';
+                response = 'Ok, estou procurando por essa peça.';
+                confidence = 0.7;
+
+                // Simular extração de entidades
+                if (messageText.includes('pastilha')) entities.product_name = 'pastilha de freio';
+                if (messageText.includes('filtro')) entities.product_name = 'filtro';
+                if (messageText.includes('amortecedor')) entities.product_name = 'amortecedor';
+                if (messageText.includes('vela')) entities.product_name = 'vela de ignição';
+                
+                if (messageText.includes('honda civic')) entities.vehicle_model = 'Honda Civic';
+                if (messageText.includes('toyota corolla')) entities.vehicle_model = 'Toyota Corolla';
+                if (messageText.includes('2015')) entities.vehicle_year = '2015';
+
+                response = this.generateSearchPartResponse(entities);
+
+            } else if (messageText.includes('preço') || messageText.includes('valor') || messageText.includes('quanto custa')) {
+                intent = 'price_inquiry';
+                response = 'Por favor, me diga o nome da peça para que eu possa verificar o preço.';
+                confidence = 0.6;
+            } else if (messageText.includes('falar com atendente') || messageText.includes('humano') || messageText.includes('transferir')) {
+                intent = 'escalate_to_human';
+                response = 'Entendido. Vou te conectar com um atendente humano.';
+                confidence = 0.95;
+            } else if (messageText.includes('obrigado') || messageText.includes('tchau') || messageText.includes('até mais')) {
+                intent = 'goodbye';
+                response = this.generateFarewellResponse();
+                confidence = 0.8;
             }
-            if (messageText.includes('obrigado') || messageText.includes('valeu') || messageText.includes('tchau')) {
-                return { response: this.generateFarewellResponse(), intent: 'farewell', confidence: 0.80 };
-            }
-            return { response: this.generateDefaultResponse(), intent: 'unknown', confidence: 0.30 };
+
+            return { response, intent, entities, confidence };
 
         } else {
             // Lógica para usar a API real da OpenAI
             try {
-                console.log('🚀 Chamando a API da OpenAI...');
+                console.log('🚀 Chamando a API da OpenAI para detecção de intenção...');
+                
+                // Exemplo de prompt mais sofisticado para detecção de intenção e extração de entidades.
+                // Em um projeto real, você usaria Function Calling ou um prompt mais elaborado
+                // para extrair JSON com intenção/entidades.
+                const systemPrompt = `Você é um assistente de vendas de autopeças. 
+                Sua tarefa é entender a *intenção* do usuário e extrair *entidades* relevantes.
+                As intenções possíveis são: 'greeting', 'catalog_request', 'help_request', 'search_part', 
+                'price_inquiry', 'escalate_to_human', 'goodbye', 'general_inquiry'.
+                Para 'search_part' ou 'price_inquiry', tente extrair 'product_name', 'vehicle_model' e 'vehicle_year'.
+                Responda com um objeto JSON no formato:
+                {
+                    "intent": "sua_intencao",
+                    "entities": {
+                        "product_name": "nome_da_peca_extraido",
+                        "vehicle_model": "modelo_do_veiculo_extraido",
+                        "vehicle_year": "ano_do_veiculo_extraido"
+                    },
+                    "response_suggestion": "uma_sugestao_de_resposta_curta_para_o_bot"
+                }
+                Se não conseguir identificar claramente, use "general_inquiry".
+                Priorize a extração de intenção e entidades.`;
+
                 const completion = await this.openai.chat.completions.create({
-                    model: "gpt-3.5-turbo", // Ou "gpt-4", "gpt-4o" se preferir
+                    model: "gpt-3.5-turbo", // ou gpt-4, gpt-4o para melhor performance/custo
                     messages: [
-                        { role: "system", content: "Você é um assistente de vendas de autopeças. Responda de forma útil e profissional, focando em encontrar produtos ou informações para o cliente." },
-                        // Se você tiver contexto de conversas anteriores, adicione aqui
+                        { role: "system", content: systemPrompt },
                         { role: "user", content: message }
                     ],
-                    max_tokens: 150, // Limite de tokens na resposta
+                    max_tokens: 200,
+                    response_format: { type: "json_object" } // Solicita resposta em formato JSON
                 });
 
-                const botResponse = completion.choices[0].message.content;
-                console.log(`✅ Resposta da OpenAI: ${botResponse}`);
+                const rawResponse = completion.choices[0].message.content;
+                console.log(`✅ Resposta bruta da OpenAI: ${rawResponse}`);
+                
+                let parsedResponse;
+                try {
+                    parsedResponse = JSON.parse(rawResponse);
+                } catch (parseError) {
+                    console.error('❌ Erro ao parsear JSON da OpenAI, usando fallback:', parseError);
+                    // Em caso de JSON inválido, retorna uma intenção genérica
+                    return { 
+                        response: "Desculpe, tive um problema ao entender sua solicitação. Pode tentar de outra forma?", 
+                        intent: 'general_inquiry', 
+                        entities: {}, 
+                        confidence: 0.2 
+                    };
+                }
 
-                // Aqui você precisaria de uma lógica mais avançada para extrair "intent" e "products"
-                // da resposta da OpenAI, o que é um tópico mais complexo (NLP, function calling, etc.)
-                // Por enquanto, vamos retornar apenas a resposta e um intent genérico.
+                // Ajusta a confiança baseada na identificação
+                const confidence = parsedResponse.intent !== 'general_inquiry' ? 0.8 : 0.4;
+
                 return {
-                    response: botResponse,
-                    intent: 'general_query', // Ou tente inferir algo baseado na resposta
-                    confidence: 0.70 // A confiança pode ser determinada pela própria IA em modelos mais avançados
+                    response: parsedResponse.response_suggestion || "Ok, entendi.",
+                    intent: parsedResponse.intent,
+                    entities: parsedResponse.entities || {},
+                    confidence: confidence
                 };
 
             } catch (error) {
                 console.error('❌ Erro ao chamar a API da OpenAI:', error.response ? error.response.data : error.message);
-                // Fallback para uma resposta padrão ou simulada em caso de erro da API
-                return { response: "Desculpe, tive um problema ao processar sua solicitação com a IA. Pode tentar novamente?", intent: 'error', confidence: 0.1 };
+                return { 
+                    response: "Desculpe, a IA está com probleminhas. Poderia tentar novamente?", 
+                    intent: 'error', 
+                    entities: {}, 
+                    confidence: 0.1 
+                };
             }
         }
     }
 
-    // Métodos de simulação (ainda úteis para fallback ou testes)
-    generateCatalogResponse() {
-        return `�� *Encontrei estas opções de pastilhas de freio:* ... (seu texto simulado)`;
-    }
-    generatePriceResponse() {
-        return `💰 *Informações de Preço:* ... (seu texto simulado)`;
-    }
+    // Funções auxiliares para respostas simuladas
     generateGreetingResponse() {
-        return `�� *Olá! Bem-vindo à AutoPeças Tech!* ... (seu texto simulado)`;
+        return `👋 *Olá! Bem-vindo à AutoPeças!* Sou seu assistente virtual. Como posso ajudar?`;
+    }
+    generateCatalogResponse() {
+        return ` *Entendido! Mostrarei o catálogo de produtos.*`;
+    }
+    generateHelpResponse() {
+        return `❓ *Central de Ajuda:* Diga o que precisa, ou digite 'catálogo' ou 'falar com atendente'.`;
+    }
+    generateSearchPartResponse(entities) {
+        let response = `Ok, procurando`;
+        if (entities.product_name) response += ` por ${entities.product_name}`;
+        if (entities.vehicle_model) response += ` para ${entities.vehicle_model}`;
+        if (entities.vehicle_year) response += ` ano ${entities.vehicle_year}`;
+        response += `.`;
+        return response;
     }
     generateFarewellResponse() {
-        return `�� *Obrigado por escolher a AutoPeças Tech!* ... (seu texto simulado)`;
+        return `👋 *Obrigado por utilizar a AutoPeças!* Tenha um ótimo dia!`;
     }
     generateDefaultResponse() {
-        return `�� *Não entendi sua solicitação...* ... (seu texto simulado)`;
+        return `💬 Não entendi bem. Pode reformular sua pergunta ou digitar 'ajuda'?`;
     }
 }
 

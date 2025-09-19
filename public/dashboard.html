@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoPeças - Dashboard</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <!-- Inclua Chart.js AQUI (pode ser via CDN ou download) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1>🚗 Chatbot AutoPeças</h1>
+                <p>Dashboard de Monitoramento</p>
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Status:</span>
+                        <span id="systemStatus" class="stat-value">Carregando...</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Uptime do Servidor:</span>
+                        <span id="systemUptime" class="stat-value">--</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="dashboard-nav">
+            <div class="nav-content">
+                <div class="nav-links">
+                    <a href="/" class="nav-link active">📊 Dashboard</a>
+                    <a href="/control" class="nav-link">🎮 Controle</a>
+                    <a href="/admin" class="nav-link">⚙️ Admin</a>
+                    <a href="/test-chat" class="nav-link">💬 Teste</a>
+                </div>
+                <div class="nav-actions">
+                    <button id="refreshBtn" class="btn-refresh" onclick="refreshDashboard()">🔄 Atualizar</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Stats Cards -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">💬</div>
+                    <div class="stat-content">
+                        <h3>Total de Conversas</h3>
+                        <div class="stat-number" id="totalConversations">0</div>
+                        <div class="stat-label">Conversas registradas</div>
+                    </div>
+                    <!-- Não é um indicador de status de serviço, mas pode ser de "saúde" do número -->
+                    <div class="stat-indicator running"></div> 
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <h3>Total de Leads</h3>
+                        <div class="stat-number" id="totalLeads">0</div>
+                        <div class="stat-label">Leads gerados</div>
+                    </div>
+                    <div class="stat-indicator running"></div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">🔄</div>
+                    <div class="stat-content">
+                        <h3>Conversas Ativas</h3>
+                        <div class="stat-number" id="activeConversations">0</div>
+                        <div class="stat-label">Em andamento (Leads novos/qualificados)</div>
+                    </div>
+                    <div class="stat-indicator" id="activeIndicator"></div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-content">
+                        <h3>Escaladas Hoje</h3>
+                        <div class="stat-number" id="escalationsToday">0</div>
+                        <div class="stat-label">Transferidas para humano</div>
+                    </div>
+                    <div class="stat-indicator" id="escalationIndicator"></div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="chart-container">
+                    <h3>📈 Atividade da Semana</h3>
+                    <!-- Canvas para o gráfico de atividade -->
+                    <canvas id="activityChartCanvas"></canvas> 
+                </div>
+
+                <div class="chart-container">
+                    <h3>🎯 Categorias Mais Procuradas</h3>
+                    <!-- Canvas para o gráfico de categorias -->
+                    <canvas id="categoriesChartCanvas"></canvas>
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section class="activity-section">
+                <div class="activity-container">
+                    <h3>📋 Últimas Conversas</h3>
+                    <div id="recentConversations" class="activity-list">
+                        <!-- Será preenchido via JavaScript -->
+                    </div>
+                </div>
+
+                <div class="system-info-container">
+                    <h3>💻 Informações do Sistema</h3>
+                    <div id="systemInfo" class="system-info">
+                        <!-- Será preenchido via JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="actions-section">
+                <h3>⚡ Ações Rápidas</h3>
+                <div class="actions-grid">
+                    <button class="action-btn" onclick="window.open('/control', '_blank')">
+                        🎮 Painel de Controle
+                    </button>
+                    <button class="action-btn" onclick="window.open('/test-chat', '_blank')">
+                        💬 Testar Chatbot
+                    </button>
+                    <button class="action-btn" onclick="window.open('/admin', '_blank')">
+                        ⚙️ Administração
+                    </button>
+                    <button class="action-btn" onclick="refreshDashboard()">
+                        🔄 Atualizar Dados
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

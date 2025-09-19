@@ -1,227 +1,172 @@
 // src/services/catalogService.js
 const Product = require('../models/Product');
+const mongoose = require('mongoose'); // Importar mongoose para Product.find()
 
 class CatalogService {
     constructor() {
         console.log('✅ CatalogService inicializado para usar MongoDB.');
+        this.products = []; // Armazenar todos os produtos em memória
+        this.isInitialized = false; // Flag para indicar se os produtos foram carregados
     }
 
-    // Método para obter todos os produtos do MongoDB
-    async getAllProducts() {
+    /**
+     * Inicializa o serviço, carregando todos os produtos do banco de dados para a memória.
+     * Isso permite buscas rápidas sem consultas repetitivas ao DB.
+     */
+    async initialize() {
+        if (this.isInitialized) {
+            console.log('📦 CatalogService já inicializado. Pulando pré-carga.');
+            return;
+        }
         try {
-            const products = await Product.find({});
-            console.log(`📦 Total de produtos encontrados: ${products.length}`);
-            return products;
+            console.log('📦 Carregando todos os produtos do banco de dados para a memória...');
+            this.products = await Product.find({}); // Carrega todos os produtos do DB
+            this.isInitialized = true;
+            console.log(`✅ CatalogService inicializado com ${this.products.length} produtos em memória.`);
         } catch (error) {
-            console.error('❌ Erro ao buscar todos os produtos do MongoDB:', error);
-            return [];
+            console.error('❌ Erro ao pré-carregar produtos no CatalogService:', error);
+            this.isInitialized = false; // Falha na inicialização
+            this.products = []; // Limpa produtos em caso de erro
+            throw new Error('Falha ao inicializar CatalogService: ' + error.message);
         }
     }
 
-    // Método para obter a contagem de produtos do MongoDB
+    /**
+     * Retorna todos os produtos atualmente carregados na memória.
+     * @returns {Array} Lista de produtos.
+     */
+    getAllProducts() {
+        return this.products;
+    }
+
+    /**
+     * Retorna a contagem total de produtos no banco de dados.
+     * @returns {Promise<number>} Número de produtos.
+     */
     async getProductCount() {
         try {
+            // Este método ainda consulta o DB para obter a contagem mais recente e precisa
             const count = await Product.countDocuments({});
-            console.log(`📊 Total de produtos no banco: ${count}`);
             return count;
         } catch (error) {
-            console.error('❌ Erro ao contar produtos do MongoDB:', error);
+            console.error('❌ Erro ao contar produtos no MongoDB (getProductCount):', error);
             return 0;
         }
     }
 
-    // Método MELHORADO para buscar produtos
+    /**
+     * Busca produtos na memória baseado em uma query e filtros.
+     * Se não encontrar na memória ou for uma query complexa, pode recorrer ao DB.
+     * @param {string} query Termo de busca.
+     * @param {object} filters Filtros adicionais (category, brand, maxPrice, etc.).
+     * @returns {Promise<Array>} Lista de produtos encontrados.
+     */
     async searchProducts(query, filters = {}) {
-        try {
-            console.log(`🔍 Iniciando busca por: "${query}"`);
-            console.log(`📋 Filtros aplicados:`, filters);
-
-            if (!query || query.trim() === '') {
-                console.log('📝 Query vazia, retornando primeiros 10 produtos');
-                const products = await Product.find({}).limit(10);
-                return products;
-            }
-
-            // Limpar e preparar a query
-            const cleanQuery = query.trim().toLowerCase();
-            const queryWords = cleanQuery.split(/\s+/);
-            
-            console.log(`🔤 Palavras da busca: [${queryWords.join(', ')}]`);
-
-            // Construir query mais flexível
-            const searchConditions = [];
-
-            // Para cada palavra, criar condições de busca
-            queryWords.forEach(word => {
-                if (word.length >= 2) { // Ignorar palavras muito pequenas
-                    searchConditions.push(
-                        { name: { $regex: word, $options: 'i' } },
-                        { brand: { $regex: word, $options: 'i' } },
-                        { category: { $regex: word, $options: 'i' } },
-                        { description: { $regex: word, $options: 'i' } },
-                        { code: { $regex: word, $options: 'i' } },
-                        { compatibility: { $regex: word, $options: 'i' } },
-                        { oem_codes: { $regex: word, $options: 'i' } }
-                    );
-                }
-            });
-
-            // Query principal - MAIS FLEXÍVEL
-            let searchQuery = {};
-            
-            if (searchConditions.length > 0) {
-                searchQuery.$or = searchConditions;
-            }
-
-            // Aplicar filtros opcionais (não obrigatórios)
-            const additionalFilters = {};
-            
-            if (filters.category) {
-                additionalFilters.category = filters.category;
-            }
-            if (filters.brand) {
-                additionalFilters.brand = filters.brand;
-            }
-            if (filters.maxPrice) {
-                additionalFilters.price = { $lte: filters.maxPrice };
-            }
-            
-            // Filtros de estoque e ativo - OPCIONAIS
-            if (filters.onlyActive !== false) {
-                // Só aplica se is_active existir no documento
-                searchQuery.$and = searchQuery.$and || [];
-                searchQuery.$and.push({
-                    $or: [
-                        { is_active: { $exists: false } }, // Campo não existe
-                        { is_active: true }                // Campo existe e é true
-                    ]
-                });
-            }
-            
-            if (filters.onlyInStock !== false) {
-                // Só aplica se stock existir no documento
-                searchQuery.$and = searchQuery.$and || [];
-                searchQuery.$and.push({
-                    $or: [
-                        { stock: { $exists: false } },     // Campo não existe
-                        { stock: { $gt: 0 } }              // Campo existe e > 0
-                    ]
-                });
-            }
-
-            // Combinar com filtros adicionais
-            if (Object.keys(additionalFilters).length > 0) {
-                searchQuery = { ...searchQuery, ...additionalFilters };
-            }
-
-            console.log(`🔍 Query MongoDB:`, JSON.stringify(searchQuery, null, 2));
-
-            // Executar busca
-            const products = await Product.find(searchQuery)
-                .sort({ price: 1 })
-                .limit(20); // Limitar resultados
-
-            console.log(`✅ Busca concluída: ${products.length} produtos encontrados`);
-            
-            // Log dos produtos encontrados (apenas nomes)
-            if (products.length > 0) {
-                console.log(`📦 Produtos encontrados:`);
-                products.slice(0, 5).forEach((product, index) => {
-                    console.log(`   ${index + 1}. ${product.name} (${product.code || 'sem código'})`);
-                });
-                if (products.length > 5) {
-                    console.log(`   ... e mais ${products.length - 5} produtos`);
-                }
-            } else {
-                console.log(`❌ Nenhum produto encontrado para "${query}"`);
-                
-                // Busca de fallback - buscar qualquer produto que contenha pelo menos uma palavra
-                console.log(`🔄 Tentando busca mais ampla...`);
-                const fallbackQuery = {
-                    $or: [
-                        { name: { $regex: cleanQuery, $options: 'i' } },
-                        { description: { $regex: cleanQuery, $options: 'i' } },
-                        { category: { $regex: cleanQuery, $options: 'i' } }
-                    ]
-                };
-                
-                const fallbackProducts = await Product.find(fallbackQuery).limit(10);
-                console.log(`🔄 Busca ampla encontrou: ${fallbackProducts.length} produtos`);
-                return fallbackProducts;
-            }
-
-            return products;
-
-        } catch (error) {
-            console.error('❌ Erro ao buscar produtos no MongoDB:', error);
-            console.error('Stack trace:', error.stack);
-            return [];
+        if (!this.isInitialized) {
+            console.warn('⚠️ CatalogService não inicializado. Tentando carregar produtos antes da busca.');
+            await this.initialize(); // Tenta inicializar se não estiver
         }
+
+        if (!query || query.trim() === '') {
+            console.log('📝 Query vazia, retornando primeiros 10 produtos da memória.');
+            return this.products.slice(0, 10);
+        }
+
+        const cleanQuery = query.trim().toLowerCase();
+        const queryWords = cleanQuery.split(/\s+/).filter(word => word.length > 1); // Ignorar palavras muito pequenas
+
+        let results = this.products.filter(product => {
+            const name = (product.name || '').toLowerCase();
+            const brand = (product.brand || '').toLowerCase();
+            const category = (product.category || '').toLowerCase();
+            const description = (product.description || '').toLowerCase();
+            const code = (product.code || '').toLowerCase();
+            const compatibility = (product.compatibility || []).map(c => c.toLowerCase()).join(' ');
+            const oemCodes = (product.oem_codes || []).map(o => o.toLowerCase()).join(' ');
+
+            if (queryWords.length === 0) { // Se a query estiver vazia após limpeza
+                return true;
+            }
+            
+            // Verifica se TODAS as palavras da query estão em algum campo
+            return queryWords.every(word => 
+                name.includes(word) ||
+                brand.includes(word) ||
+                category.includes(word) ||
+                description.includes(word) ||
+                code.includes(word) ||
+                compatibility.includes(word) ||
+                oemCodes.includes(word)
+            );
+        });
+
+        // Aplicar filtros adicionais
+        if (filters.category) {
+            results = results.filter(p => (p.category || '').toLowerCase() === filters.category.toLowerCase());
+        }
+        if (filters.brand) {
+            results = results.filter(p => (p.brand || '').toLowerCase() === filters.brand.toLowerCase());
+        }
+        if (filters.maxPrice) {
+            results = results.filter(p => p.price <= filters.maxPrice);
+        }
+        // Filtros de estoque e ativo - usam dados em memória
+        if (filters.onlyActive !== false) {
+            results = results.filter(p => p.is_active === undefined || p.is_active === true);
+        }
+        if (filters.onlyInStock !== false) {
+            results = results.filter(p => p.stock === undefined || p.stock > 0);
+        }
+
+        results.sort((a, b) => a.price - b.price); // Ordena por preço
+
+        console.log(`🔍 Busca na memória por "${query}" encontrou: ${results.length} produtos.`);
+        return results.slice(0, 20); // Limita os resultados retornados
     }
 
-    // Método para debug - verificar estrutura dos produtos
+    /**
+     * Método para debug - verificar estrutura dos produtos e contagem.
+     * @returns {Promise<void>}
+     */
     async debugProductStructure() {
         try {
-            console.log('🔍 Analisando estrutura dos produtos no banco...');
+            console.log('🔍 Analisando estrutura de produtos no banco...');
             
             const sampleProduct = await Product.findOne({});
             if (sampleProduct) {
                 console.log('📋 Estrutura de um produto exemplo:');
                 console.log(JSON.stringify(sampleProduct.toObject(), null, 2));
                 
-                // Verificar campos disponíveis
                 const fields = Object.keys(sampleProduct.toObject());
                 console.log('🏷️ Campos disponíveis:', fields);
             } else {
-                console.log('❌ Nenhum produto encontrado no banco');
+                console.log('❌ Nenhum produto encontrado no banco para debug.');
             }
             
             const totalCount = await this.getProductCount();
-            console.log(`📊 Total de produtos: ${totalCount}`);
+            console.log(`📊 Total de produtos no DB: ${totalCount}`);
             
         } catch (error) {
-            console.error('❌ Erro no debug:', error);
+            console.error('❌ Erro no debugProductStructure:', error);
         }
     }
 
-    // Métodos existentes mantidos
-    async getProductByCode(code) {
-        try {
-            const product = await Product.findOne({
-                $or: [
-                    { code: code },
-                    { oem_codes: code }
-                ]
-            });
-            return product;
-        } catch (error) {
-            console.error('❌ Erro ao buscar produto por código:', error);
-            return null;
-        }
+    // Métodos auxiliares de busca (podem usar a lista em memória)
+    getProductByCode(code) {
+        return this.products.find(p => p.code === code || (p.oem_codes && p.oem_codes.includes(code)));
     }
 
-    async getProductById(id) {
-        try {
-            const product = await Product.findById(id);
-            return product;
-        } catch (error) {
-            console.error('❌ Erro ao buscar produto por ID:', error);
-            return null;
-        }
+    getProductById(id) {
+        // Supondo que 'id' é um campo único que você usa para identificar o produto,
+        // não necessariamente o _id do MongoDB, a menos que seu Product model defina.
+        return this.products.find(p => p.id === id); 
     }
 
-    async getLowStockProducts(threshold = 5) {
-        try {
-            const products = await Product.find({
-                stock: { $lte: threshold, $gt: 0 }
-            });
-            return products;
-        } catch (error) {
-            console.error('❌ Erro ao buscar produtos com baixo estoque:', error);
-            return [];
-        }
+    getLowStockProducts(threshold = 5) {
+        return this.products.filter(p => p.stock && p.stock <= threshold && p.stock > 0);
     }
 
+    // O método `calculatePrice` não precisa de modificação.
     calculatePrice(product, customerType = 'retail', quantity = 1) {
         if (!product) return null;
 
@@ -245,6 +190,8 @@ class CatalogService {
             quantity: quantity
         };
     }
+
+    // REMOVIDO: O método `startChatbot()` foi removido, pois ele pertence ao ServiceManager.
 }
 
 module.exports = CatalogService;
