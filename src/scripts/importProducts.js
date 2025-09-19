@@ -7,14 +7,23 @@ const path = require('path');
 
 const Product = require('../models/Product'); // O caminho está correto para src/models/Product
 
-// Usa process.cwd() que retorna o diretório de onde o comando 'node' foi executado (raiz do projeto).
-const csvFilePath = path.join(process.cwd(), 'novos_produtos.csv'); 
+// ✅ MUDANÇA: Agora aponta para data/products.csv
+const csvFilePath = path.join(process.cwd(), 'data', 'products.csv'); 
 
 async function importProducts() {
     try {
         const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/chatbot-autopecas';
         await mongoose.connect(mongoUri);
         console.log('✅ Conectado ao MongoDB.');
+        
+        // ✅ Verificar se o arquivo existe
+        if (!fs.existsSync(csvFilePath)) {
+            console.error(`❌ Arquivo CSV não encontrado: ${csvFilePath}`);
+            console.log('💡 Certifique-se de que o arquivo está em: data/products.csv');
+            process.exit(1);
+        }
+        
+        console.log(`📄 Lendo arquivo: ${csvFilePath}`);
 
         const productsToInsert = [];
 
@@ -52,26 +61,63 @@ async function importProducts() {
                     },
                     is_active: true // Garante que produtos importados estejam ativos por padrão
                 };
+                
+                // ✅ Log do progresso a cada 10 produtos
+                if (productsToInsert.length % 10 === 0 && productsToInsert.length > 0) {
+                    console.log(`📦 Processados ${productsToInsert.length} produtos...`);
+                }
+                
                 productsToInsert.push(productData);
             })
             .on('end', async () => {
                 console.log(`✨ CSV lido. Total de ${productsToInsert.length} produtos para inserir.`);
-                try {
-                    // Insere todos os produtos de uma vez
-                    // ordered: false faz com que a inserção continue mesmo se houver erros de duplicidade
-                    await Product.insertMany(productsToInsert, { ordered: false });
-                    console.log('📦 Todos os produtos do CSV importados com sucesso!');
-                } catch (error) {
-                    if (error.code === 11000) { // Erro de duplicidade (duplicata de id ou code)
-                        console.warn('⚠️ Alguns produtos já existem (ID ou Código duplicado). Os duplicados foram ignorados.');
-                    } else {
-                        console.error('❌ Erro ao inserir produtos no MongoDB:', error);
+                
+                // ✅ Verificar produtos existentes antes da inserção
+                let insertedCount = 0;
+                let skippedCount = 0;
+                let errorCount = 0;
+                
+                console.log('🔍 Verificando produtos existentes...');
+                
+                for (const productData of productsToInsert) {
+                    try {
+                        // Verificar se produto já existe por ID ou código
+                        const existingProduct = await Product.findOne({
+                            $or: [
+                                { id: productData.id },
+                                { code: productData.code }
+                            ]
+                        });
+                        
+                        if (existingProduct) {
+                            console.log(`⏭️ Produto ${productData.id} já existe, pulando...`);
+                            skippedCount++;
+                        } else {
+                            // Inserir produto novo
+                            await Product.create(productData);
+                            console.log(`✅ Produto ${productData.id} inserido: ${productData.name}`);
+                            insertedCount++;
+                        }
+                    } catch (error) {
+                        console.error(`❌ Erro ao inserir produto ${productData.id}:`, error.message);
+                        errorCount++;
                     }
-                } finally {
-                    await mongoose.disconnect();
-                    console.log('🔌 Conexão com MongoDB fechada.');
-                    process.exit(0);
                 }
+                
+                // ✅ Relatório final
+                console.log('\n🎉 Importação concluída!');
+                console.log(`✅ Produtos inseridos: ${insertedCount}`);
+                console.log(`⏭️ Produtos já existentes (pulados): ${skippedCount}`);
+                console.log(`❌ Erros: ${errorCount}`);
+                console.log(`📊 Total processado: ${productsToInsert.length}`);
+                
+                // Verificar total no banco
+                const totalInDB = await Product.countDocuments();
+                console.log(`🗄️ Total de produtos no banco agora: ${totalInDB}`);
+                
+                await mongoose.disconnect();
+                console.log('🔌 Conexão com MongoDB fechada.');
+                process.exit(0);
             })
             .on('error', (error) => {
                 console.error('❌ Erro ao ler o arquivo CSV:', error);

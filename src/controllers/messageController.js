@@ -1,59 +1,123 @@
+// src/controllers/messageController.js
 class MessageController {
-    constructor(aiService, catalogService) {
-        this.aiService = aiService;
+    constructor(catalogService, aiService) { // Agora recebe aiService
         this.catalogService = catalogService;
+        this.aiService = aiService; // Armazena o AI Service
         console.log('✅ MessageController inicializado');
     }
 
+    /**
+     * Lida com as mensagens recebidas do usuário, usando IA para entender a intenção.
+     * @param {object} message Objeto da mensagem recebida (ex: de whatsapp-web.js).
+     * @param {object} whatsappService Instância do serviço de WhatsApp para enviar respostas.
+     */
     async handleMessage(message, whatsappService) {
         try {
             console.log('🔄 MessageController processando mensagem...');
             
-            const userMessage = message.body.toLowerCase().trim();
+            const userMessage = message.body.trim();
             const chatId = message.from;
             
-            console.log(`📝 Mensagem processada: "${userMessage}"`);
-            
-            // Verificar se é uma saudação
-            if (this.isGreeting(userMessage)) {
-                const response = this.getGreetingResponse();
-                await whatsappService.sendMessage(chatId, response);
-                return;
+            console.log(`📝 Mensagem recebida: "${userMessage}" de ${chatId}`);
+
+            // 1. Processar mensagem com o AIService para obter intenção e entidades
+            const aiResult = await this.aiService.processMessage(userMessage);
+            console.log(`🧠 AI detectou: Intenção=${aiResult.intent}, Entidades=${JSON.stringify(aiResult.entities)}, Confiança=${aiResult.confidence}`);
+
+            let botResponse = '';
+            let productsFound = [];
+
+            // 2. Lógica baseada na intenção detectada pela IA
+            switch (aiResult.intent) {
+                case 'greeting':
+                    botResponse = this.getGreetingResponse();
+                    break;
+
+                case 'catalog_request':
+                    // Pega todos os produtos do CatalogService (que já estão em memória)
+                    productsFound = this.catalogService.getAllProducts(); 
+                    if (productsFound.length > 0) {
+                        await whatsappService.sendCatalog(chatId, productsFound);
+                    } else {
+                        botResponse = "Desculpe, não consegui encontrar nenhum produto no catálogo no momento. Por favor, tente mais tarde.";
+                    }
+                    break;
+
+                case 'help_request':
+                    botResponse = this.getHelpResponse();
+                    break;
+
+                case 'search_part':
+                    const productName = aiResult.entities.product_name || userMessage;
+                    const vehicleModel = aiResult.entities.vehicle_model;
+                    const vehicleYear = aiResult.entities.vehicle_year;
+
+                    // Constrói a query para o CatalogService
+                    const searchQuery = productName;
+                    const searchFilters = {};
+                    if (vehicleModel) searchFilters.vehicle = vehicleModel;
+                    if (vehicleYear) searchFilters.year = vehicleYear;
+
+                    productsFound = await this.catalogService.searchProducts(searchQuery, searchFilters);
+                    
+                    if (productsFound.length > 0) {
+                        console.log(`🔍 Encontrados ${productsFound.length} produtos via IA para "${searchQuery}".`);
+                        await whatsappService.sendCatalog(chatId, productsFound);
+                    } else {
+                        botResponse = this.getNoProductsResponse(userMessage);
+                    }
+                    break;
+
+                case 'price_inquiry':
+                    const inquiredProduct = aiResult.entities.product_name;
+                    if (inquiredProduct) {
+                        const products = await this.catalogService.searchProducts(inquiredProduct, {});
+                        if (products.length > 0) {
+                            botResponse = `O preço de ${products[0].name} é R$ ${products[0].price.toFixed(2)}.`;
+                            if (products[0].stock !== undefined && products[0].stock <= 5 && products[0].stock > 0) {
+                                botResponse += ` Restam poucas unidades em estoque!`;
+                            } else if (products[0].stock === 0) {
+                                botResponse += ` Este item está sem estoque no momento.`;
+                            }
+                        } else {
+                            botResponse = `Não encontrei informações de preço para "${inquiredProduct}". Tente ser mais específico.`;
+                        }
+                    } else {
+                        botResponse = `Para qual peça você gostaria de saber o preço, ${message.from.split('@')[0]}?`;
+                    }
+                    break;
+
+                case 'escalate_to_human':
+                    botResponse = "Entendido, Gabriel! Vou te conectar com um dos nossos atendentes humanos. Por favor, aguarde um momento. Assim que um atendente estiver disponível, ele entrará em contato.";
+                    // Aqui você implementaria a lógica para notificar um atendente (ex: via um sistema de tickets, Slack, etc.)
+                    // Exemplo: await this.someNotificationService.notifyHuman(chatId, userMessage);
+                    break;
+
+                case 'goodbye':
+                    botResponse = this.getGoodbyeResponse();
+                    break;
+                    
+                case 'error': // Quando o AIService encontra um erro
+                case 'general_inquiry': // Quando a IA não tem certeza da intenção
+                default:
+                    // Se a confiança da IA for muito baixa, ou for uma intenção geral
+                    if (aiResult.confidence && aiResult.confidence < 0.5) {
+                        botResponse = this.getNoProductsResponse(userMessage); // Resposta de não entendimento
+                    } else {
+                        botResponse = aiResult.response; // Resposta direta da IA
+                    }
+                    break;
+            }
+
+            // Envia a resposta se uma foi gerada
+            if (botResponse) {
+                await whatsappService.sendMessage(chatId, botResponse);
             }
             
-            // Verificar se é pedido de catálogo
-            if (this.isCatalogRequest(userMessage)) {
-                // const products = this.catalogService.getAllProducts();
-                const products = await this.catalogService.getAllProducts();
-                await whatsappService.sendCatalog(chatId, products);
-                return;
-            }
-            
-            // Verificar se é pedido de ajuda
-            if (this.isHelpRequest(userMessage)) {
-                const response = this.getHelpResponse();
-                await whatsappService.sendMessage(chatId, response);
-                return;
-            }
-            
-            // Buscar produtos no catálogo
-            // const products = this.catalogService.searchProducts(userMessage);
-            const products = await this.catalogService.searchProducts(userMessage);
-            
-            if (products.length > 0) {
-                console.log(`🔍 Encontrados ${products.length} produtos`);
-                await whatsappService.sendCatalog(chatId, products);
-            } else {
-                console.log('❌ Nenhum produto encontrado');
-                const response = this.getNoProductsResponse(userMessage);
-                await whatsappService.sendMessage(chatId, response);
-            }
-            
-            console.log('✅ Mensagem processada com sucesso');
+            console.log('✅ Mensagem processada com sucesso.');
             
         } catch (error) {
             console.error('❌ Erro no MessageController.handleMessage:', error);
-            
             // Resposta de erro para o usuário
             try {
                 const errorResponse = "😅 Ops! Tive um probleminha técnico. Pode repetir sua mensagem?";
@@ -64,11 +128,7 @@ class MessageController {
         }
     }
 
-    isGreeting(message) {
-        const greetings = ['oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'e aí', 'eai'];
-        return greetings.some(greeting => message.includes(greeting));
-    }
-
+    // Métodos auxiliares de resposta (mantidos do seu código original)
     getGreetingResponse() {
         return `👋 *Olá! Bem-vindo à AutoPeças!*
 
@@ -83,16 +143,6 @@ class MessageController {
 *Exemplo:* "Preciso de pastilha de freio para Civic 2015"`;
     }
 
-    isCatalogRequest(message) {
-        const catalogKeywords = ['catálogo', 'catalogo', 'produtos', 'peças', 'pecas', 'lista', 'mostrar', 'ver tudo'];
-        return catalogKeywords.some(keyword => message.includes(keyword));
-    }
-
-    isHelpRequest(message) {
-        const helpKeywords = ['ajuda', 'help', 'como', 'funciona', 'comandos', 'opções', 'opcoes'];
-        return helpKeywords.some(keyword => message.includes(keyword));
-    }
-
     getHelpResponse() {
         return `❓ *Central de Ajuda - AutoPeças*
 
@@ -104,7 +154,7 @@ class MessageController {
 📋 *Comandos úteis:*
 • *"catálogo"* - Ver todos os produtos
 • *"ajuda"* - Esta mensagem
-• *"contato"* - Falar com atendente
+• *"falar com atendente"* - Falar com atendente
 
 🚗 *Tipos de peças disponíveis:*
 • Pastilhas e discos de freio
@@ -129,11 +179,14 @@ class MessageController {
 🤝 Ou digite *"ajuda"* para mais dicas de busca!`;
     }
 
-    // Método para processar seleção de produto (se implementado)
-    async processProductSelection(message, whatsappService) {
-        // Implementar lógica para quando usuário seleciona um produto específico
-        console.log('🔄 Processando seleção de produto...');
+    getGoodbyeResponse() {
+        return `👋 A AutoPeças agradece seu contato! Se precisar de algo mais, é só chamar!`;
     }
+
+    // O método `processProductSelection` seria para um fluxo mais avançado de interação
+    // async processProductSelection(message, whatsappService) {
+    //     console.log('🔄 Processando seleção de produto...');
+    // }
 }
 
 module.exports = MessageController;

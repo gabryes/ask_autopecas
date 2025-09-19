@@ -1,3 +1,6 @@
-2025/09/18-09:42:56.173 2bbc Reusing MANIFEST C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/MANIFEST-000001
-2025/09/18-09:42:56.185 2bbc Recovering log #7
-2025/09/18-09:42:56.186 2bbc Reusing old log C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/000007.log 
+2025/09/19-11:05:14.412 5358 Reusing MANIFEST C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/MANIFEST-000001
+2025/09/19-11:05:14.439 5358 Recovering log #13
+2025/09/19-11:05:14.440 5358 Reusing old log C:\Users\user\Documents\Pessoal\Empresa\ask_autopecas\wwebjs_auth_v3\session\Default\Local Storage\leveldb/000013.log 
+2025/09/19-11:07:16.117 5660 Level-0 table #18: started
+2025/09/19-11:07:16.132 5660 Level-0 table #18: 12522 bytes OK
+2025/09/19-11:07:16.141 5660 Delete type=0 #13
